@@ -1,5 +1,3 @@
-// Post.js - Mongoose model for blog posts
-
 const mongoose = require('mongoose');
 
 const PostSchema = new mongoose.Schema(
@@ -10,22 +8,22 @@ const PostSchema = new mongoose.Schema(
       trim: true,
       maxlength: [100, 'Title cannot be more than 100 characters'],
     },
-    content: {
-      type: String,
-      required: [true, 'Please provide content'],
-    },
-    featuredImage: {
-      type: String,
-      default: 'default-post.jpg',
-    },
     slug: {
       type: String,
       required: true,
       unique: true,
     },
+    content: {
+      type: String,
+      required: [true, 'Please provide content'],
+    },
     excerpt: {
       type: String,
       maxlength: [200, 'Excerpt cannot be more than 200 characters'],
+    },
+    featuredImage: {
+      type: String,
+      default: 'default-post.jpg',
     },
     author: {
       type: mongoose.Schema.Types.ObjectId,
@@ -51,10 +49,11 @@ const PostSchema = new mongoose.Schema(
         user: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'User',
+          required: true,
         },
         content: {
           type: String,
-          required: true,
+          required: [true, 'Comment cannot be empty'],
         },
         createdAt: {
           type: Date,
@@ -63,38 +62,44 @@ const PostSchema = new mongoose.Schema(
       },
     ],
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
 
-// Create slug from title before saving
+// --- INDEXES FOR PERFORMANCE ---
+PostSchema.index({ slug: 1 });
+PostSchema.index({ title: 'text', content: 'text' });
+
+// --- MIDDLEWARE ---
+
+// Pre-save hook to ONLY generate excerpt as a fallback.
+// Slug generation is now handled in the controller to avoid circular dependency.
 PostSchema.pre('save', function (next) {
-  if (!this.isModified('title')) {
-    return next();
+  // Auto-generate excerpt if not provided
+  if (!this.excerpt && this.content) {
+    const plainTextContent = this.content.replace(/<[^>]*>/g, '');
+    this.excerpt = plainTextContent.substring(0, 197) + '...';
   }
-  
-  this.slug = this.title
-    .toLowerCase()
-    .replace(/[^\w ]+/g, '')
-    .replace(/ +/g, '-');
-    
   next();
 });
 
-// Virtual for post URL
+// --- VIRTUALS ---
 PostSchema.virtual('url').get(function () {
   return `/posts/${this.slug}`;
 });
 
-// Method to add a comment
+// --- INSTANCE METHODS ---
 PostSchema.methods.addComment = function (userId, content) {
   this.comments.push({ user: userId, content });
   return this.save();
 };
 
-// Method to increment view count
 PostSchema.methods.incrementViewCount = function () {
   this.viewCount += 1;
   return this.save();
 };
 
-module.exports = mongoose.model('Post', PostSchema); 
+module.exports = mongoose.model('Post', PostSchema);

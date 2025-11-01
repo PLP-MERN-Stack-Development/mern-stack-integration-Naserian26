@@ -58,7 +58,9 @@ export const postService = {
 
   // Create a new post
   createPost: async (postData) => {
+    console.log('Sending post data:', postData); // Debug log
     const response = await api.post('/posts', postData);
+    console.log('Post creation response:', response.data); // Debug log
     return response.data;
   },
 
@@ -83,6 +85,12 @@ export const postService = {
   // Search posts
   searchPosts: async (query) => {
     const response = await api.get(`/posts/search?q=${query}`);
+    return response.data;
+  },
+
+  // Get posts by category - ADDED MISSING FUNCTION
+  getPostsByCategory: async (categoryId) => {
+    const response = await api.get(`/posts?category=${categoryId}`);
     return response.data;
   },
 };
@@ -133,4 +141,17 @@ export const authService = {
   },
 };
 
-export default api; 
+// Upload API services
+export const uploadService = {
+  // Upload image
+  uploadImage: async (formData) => {
+    const response = await api.post('/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+};
+
+export default api;
